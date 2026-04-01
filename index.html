@@ -1,0 +1,2074 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InterviewAI — AI 면접 연습 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=DM+Mono:wght@400;500&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: rgba(255,255,255,0.07);
+    --accent: #c8a96e;
+    --accent2: #7eb8f7;
+    --accent3: #a78bfa;
+    --red: #f87171;
+    --green: #4ade80;
+    --text: #e8e8e8;
+    --text-muted: #6b7280;
+    --text-dim: #9ca3af;
+    --panel-w: 320px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); }
+
+  /* ── SPLASH ── */
+  #splash {
+    position: fixed; inset: 0; z-index: 100;
+    background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px;
+    transition: opacity .6s ease, visibility .6s;
+  }
+  #splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+  .splash-logo {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 44px; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .splash-sub { color: var(--text-muted); font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+  .splash-bar { width: 200px; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+  .splash-bar-inner { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; animation: load 1.8s ease forwards; }
+  @keyframes load { to { width: 100%; } }
+
+  /* ── LAYOUT ── */
+  #app { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 210px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 0;
+  }
+  .logo {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 19px; font-weight: 700;
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .nav { flex: 1; padding: 16px 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; cursor: pointer;
+    color: var(--text-muted); font-size: 13px; font-weight: 500;
+    border-left: 2px solid transparent;
+    transition: all .2s;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(200,169,110,0.06); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+
+  /* ── MAIN ── */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    height: 54px; flex-shrink: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 24px;
+  }
+  .topbar-title { font-size: 14px; font-weight: 600; }
+  .topbar-tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    background: rgba(200,169,110,0.12); color: var(--accent);
+    border: 1px solid rgba(200,169,110,0.2);
+    font-family: 'DM Mono', monospace;
+  }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .btn-sm {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-dim); font-size: 12px; cursor: pointer;
+    transition: all .2s; font-family: inherit;
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── PAGES ── */
+  .page { display: none; flex: 1; overflow: hidden; }
+  .page.active { display: flex; }
+
+  /* ── PAGE: JOB ── */
+  #page-job {
+    flex-direction: column; overflow-y: auto;
+    padding: 32px 40px; gap: 24px;
+  }
+  .url-row { display: flex; gap: 12px; align-items: center; }
+  .url-row input {
+    flex: 1; font-family: 'DM Mono', monospace; font-size: 13px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 12px 16px; border-radius: 10px;
+    outline: none; transition: border .2s;
+  }
+  .url-row input:focus { border-color: rgba(126,184,247,0.5); }
+  .url-row input::placeholder { color: var(--text-muted); }
+  .btn-analyze {
+    padding: 12px 22px; border-radius: 10px; border: none;
+    background: var(--accent2); color: #000; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+    transition: all .2s; flex-shrink: 0;
+  }
+  .btn-analyze:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(126,184,247,0.3); }
+  .btn-analyze:disabled { opacity: 0.5; pointer-events: none; }
+  .url-hint { font-size: 12px; color: var(--text-muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  .url-hint span { display: flex; align-items: center; gap: 5px; }
+  .job-loading {
+    display: none; align-items: center; gap: 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .job-loading.show { display: flex; }
+  .loading-spinner {
+    width: 20px; height: 20px; border: 2px solid var(--border);
+    border-top-color: var(--accent2); border-radius: 50%;
+    animation: spin .8s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .job-result-card {
+    display: none; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    animation: fadeUp .4s ease;
+  }
+  .job-result-card.show { display: block; }
+  .job-result-header {
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .job-company { font-size: 18px; font-weight: 700; }
+  .job-url-badge {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    padding: 4px 12px; border-radius: 20px;
+    background: rgba(126,184,247,0.1); color: var(--accent2);
+    border: 1px solid rgba(126,184,247,0.2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
+  }
+  .job-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .job-field {
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .job-field:nth-child(even) { border-right: none; }
+  .job-field:nth-last-child(-n+2) { border-bottom: none; }
+  .job-field-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .job-field-value { font-size: 13px; color: var(--text); line-height: 1.7; }
+  .job-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .chip {
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.2); color: var(--accent3);
+  }
+  .chip.blue { background: rgba(126,184,247,0.1); border-color: rgba(126,184,247,0.2); color: var(--accent2); }
+  .chip.green { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.2); color: var(--green); }
+  .job-cta {
+    display: none; background: var(--surface); border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 12px; padding: 18px 24px;
+    display: none; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .job-cta.show { display: flex; }
+  .job-cta-text { font-size: 13px; color: var(--text-dim); }
+  .job-cta-text strong { color: var(--accent); }
+  #page-resume {
+    flex-direction: column; overflow-y: auto;
+    padding: 32px 40px; gap: 24px;
+  }
+  .section-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .section-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 11px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  input, textarea, select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: inherit; font-size: 14px;
+    padding: 10px 14px; border-radius: 8px;
+    outline: none; transition: border .2s; resize: vertical;
+  }
+  input:focus, textarea:focus { border-color: rgba(200,169,110,0.4); }
+  input::placeholder, textarea::placeholder { color: var(--text-muted); }
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+  .form-card-title { font-size: 12px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .page-actions { display: flex; justify-content: flex-end; padding-top: 8px; }
+  .btn-next {
+    padding: 12px 32px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--accent), #d4a84b); color: #000;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: all .2s;
+  }
+  .btn-next:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(200,169,110,0.3); }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     PAGE: INTERVIEW — 2-컬럼 레이아웃 (질문+답변 | 토론)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #page-interview { flex-direction: row; overflow: hidden; }
+
+  /* ── 중앙: 질문+답변 + 토론 ── */
+  .iv-main { flex: 1; display: flex; flex-direction: row; overflow: hidden; min-width: 0; }
+
+  /* 질문/답변 컬럼 — 넓게 */
+  .iv-qa-col {
+    width: 510px; flex-shrink: 0;
+    display: flex; flex-direction: column; overflow: hidden;
+    border-right: 1px solid var(--border);
+  }
+  .iv-top {
+    flex: 1; overflow-y: auto; scroll-behavior: smooth;
+    padding: 20px 22px; display: flex; flex-direction: column; gap: 14px;
+  }
+
+  /* 시작 화면 */
+  .start-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 28px 16px; gap: 14px; text-align: center; flex: 1;
+  }
+  .start-icon { font-size: 40px; }
+  .start-title { font-family: 'Noto Serif KR', serif; font-size: 19px; font-weight: 700; }
+  .start-desc { color: var(--text-muted); font-size: 12px; line-height: 1.8; }
+  .start-chips { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+  .start-chip { font-size: 10px; padding: 3px 9px; border-radius: 20px; background: rgba(200,169,110,0.1); color: var(--accent); border: 1px solid rgba(200,169,110,0.2); }
+  .btn-start {
+    padding: 10px 26px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--accent), #d4a84b); color: #000;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s;
+  }
+  .btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(200,169,110,0.35); }
+
+  /* 진행 바 — 강화 */
+  .progress-bar-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .progress-steps { display: flex; gap: 5px; }
+  .progress-dot {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    border: 2px solid var(--border); background: var(--surface2); color: var(--text-muted);
+    transition: all .3s;
+  }
+  .progress-dot.active { border-color: var(--accent); background: rgba(200,169,110,0.15); color: var(--accent); box-shadow: 0 0 10px rgba(200,169,110,0.2); }
+  .progress-dot.done { border-color: var(--green); background: rgba(74,222,128,0.15); color: var(--green); }
+  .progress-line { flex: 1; height: 3px; background: var(--border); border-radius: 2px; }
+  .progress-line-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--accent)); border-radius: 2px; transition: width .6s ease; }
+  .progress-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); white-space: nowrap; font-weight: 700; }
+
+  /* 현재 질문 카드 — 강화 */
+  .current-q {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px 24px; position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .current-q::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  }
+  .current-q::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at top left, rgba(200,169,110,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .q-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .q-agent-badge { font-size: 12px; padding: 5px 12px; border-radius: 20px; font-weight: 600; }
+  .q-num { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .q-text { font-size: 17px; font-weight: 700; line-height: 1.75; font-family: 'Noto Serif KR', serif; color: var(--text); }
+  .q-hint { margin-top: 14px; font-size: 12px; color: var(--text-muted); font-style: italic; padding: 10px 14px; background: rgba(255,255,255,0.02); border-radius: 10px; border-left: 3px solid rgba(200,169,110,0.3); line-height: 1.6; }
+  .q-category { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
+  /* 이전 답변 로그 */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .prev-log-title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; padding: 4px 0 2px; font-weight: 700; }
+  .prev-qa {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 14px; animation: fadeUp .4s ease;
+    border-left: 3px solid rgba(74,222,128,0.3);
+    opacity: 0.85;
+  }
+  .prev-qa:hover { opacity: 1; }
+  .prev-q-text { font-size: 11px; color: var(--text-dim); margin-bottom: 5px; line-height: 1.5; }
+  .prev-a-text { font-size: 12px; color: var(--text); border-left: 2px solid var(--accent); padding-left: 9px; line-height: 1.6; }
+
+  /* 답변 입력 — 강화 */
+  .answer-area {
+    border-top: 1px solid var(--border);
+    padding: 16px 20px; background: var(--surface);
+    display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+  }
+  .answer-area-label {
+    font-size: 11px; color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .answer-area textarea {
+    background: var(--surface2); border: 1px solid rgba(200,169,110,0.15);
+    min-height: 120px; font-size: 14px; line-height: 1.75; width: 100%;
+    color: var(--text); font-family: inherit; padding: 14px 16px; border-radius: 12px; outline: none; resize: vertical;
+  }
+  .answer-area textarea:focus { border-color: rgba(200,169,110,0.45); box-shadow: 0 0 0 3px rgba(200,169,110,0.06); }
+  .answer-controls { display: flex; align-items: center; gap: 8px; }
+  /* 현재 진행 질문 — 펄스 강조 */
+  @keyframes currentPulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(200,169,110,0.15), 0 2px 12px rgba(200,169,110,0.1); }
+    50% { box-shadow: 0 0 0 2px rgba(200,169,110,0.3), 0 4px 20px rgba(200,169,110,0.18); }
+  }
+  .qbank-item.current { animation: currentPulse 2.5s ease infinite; }
+
+  .timer-badge {
+    font-family: 'DM Mono', monospace; background: var(--surface2); border: 1px solid var(--border);
+    padding: 5px 11px; border-radius: 8px; font-size: 13px; color: var(--accent);
+    letter-spacing: 1.5px; font-weight: 700;
+  }
+  .timer-badge.urgent { color: var(--red); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.06); animation: pulse 1s ease infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+  .btn-submit {
+    margin-left: auto; padding: 8px 20px; border-radius: 8px; border: none;
+    background: linear-gradient(135deg, var(--accent), #d4a84b); color: #000;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s;
+  }
+  .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(200,169,110,0.35); }
+  .btn-submit:disabled { opacity: 0.4; pointer-events: none; }
+  .btn-skip {
+    padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; font-family: inherit; transition: all .2s;
+  }
+  .btn-skip:hover { border-color: var(--text-muted); color: var(--text-dim); }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     🔥 토론 패널 — 우측 핵심 영역 (대폭 강화)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  .iv-debate-col {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+    background: #0d0f14;
+  }
+
+  /* 토론 헤더 */
+  .debate-header {
+    padding: 14px 22px 12px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+    background: linear-gradient(180deg, rgba(200,169,110,0.09) 0%, transparent 100%);
+  }
+  .debate-header-left { flex: 1; min-width: 0; }
+  .debate-header-title { font-size: 16px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 9px; }
+  .debate-header-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .debate-tabs { display: flex; gap: 4px; flex-shrink: 0; }
+  .debate-tab {
+    font-size: 10px; padding: 5px 13px; border-radius: 20px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all .2s;
+  }
+  .debate-tab.active { background: rgba(200,169,110,0.12); border-color: rgba(200,169,110,0.35); color: var(--accent); }
+
+  /* ── 에이전트 5인 카드 바 (강화) ── */
+  .debate-agents-bar {
+    display: flex; align-items: stretch; gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface); flex-shrink: 0;
+  }
+  .dab-agent {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 10px 8px 9px;
+    border-right: 1px solid var(--border);
+    transition: all .3s; cursor: default; position: relative; overflow: hidden;
+  }
+  .dab-agent:last-child { border-right: none; }
+  .dab-agent::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+    background: transparent; transition: background .4s;
+  }
+  .dab-agent.thinking::after { background: linear-gradient(90deg, #fbbf24, transparent); }
+  .dab-agent.done::after { background: linear-gradient(90deg, var(--green), transparent); }
+  .dab-agent.thinking { background: rgba(251,191,36,0.04); }
+  .dab-agent.done { background: rgba(74,222,128,0.04); }
+  .dab-agent-avatar {
+    width: 32px; height: 32px; border-radius: 9px; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); transition: all .3s;
+  }
+  .dab-agent.thinking .dab-agent-avatar { border-color: rgba(251,191,36,0.4); box-shadow: 0 0 8px rgba(251,191,36,0.2); }
+  .dab-agent.done .dab-agent-avatar { border-color: rgba(74,222,128,0.35); }
+  .dab-agent-name { font-size: 10px; font-weight: 600; color: var(--text-muted); transition: color .3s; text-align: center; line-height: 1.2; }
+  .dab-agent.thinking .dab-agent-name { color: #fbbf24; }
+  .dab-agent.done .dab-agent-name { color: var(--green); }
+  .dab-agent-pill {
+    font-size: 8px; padding: 1px 7px; border-radius: 8px; font-weight: 700;
+    border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+    transition: all .3s; white-space: nowrap;
+  }
+  .dab-agent.thinking .dab-agent-pill { border-color: rgba(251,191,36,0.35); color: #fbbf24; background: rgba(251,191,36,0.1); animation: pulse 1.2s ease infinite; }
+  .dab-agent.done .dab-agent-pill { border-color: rgba(74,222,128,0.35); color: var(--green); background: rgba(74,222,128,0.1); animation: none; }
+  .dab-agent-score-line {
+    width: 100%; height: 2px; background: var(--border); border-radius: 1px; overflow: hidden;
+  }
+  .dab-agent-score-fill { height: 100%; width: 0%; border-radius: 1px; transition: width 1s ease; }
+
+  /* ── 토론 피드 ── */
+  .debate-feed {
+    flex: 1; overflow-y: auto; padding: 22px 26px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .debate-feed::-webkit-scrollbar { width: 3px; }
+  .debate-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 2px; }
+
+  /* 빈 상태 */
+  .debate-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; gap: 16px; color: var(--text-muted); text-align: center;
+  }
+  .debate-empty-icon { font-size: 48px; opacity: 0.25; }
+  .debate-empty-text { font-size: 14px; line-height: 1.9; color: var(--text-muted); }
+  .debate-empty-hint { font-size: 12px; color: var(--text-muted); opacity: 0.6; }
+
+  /* 섹션 구분자 */
+  .debate-section-divider { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .debate-section-divider::before, .debate-section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .debate-section-label {
+    font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px;
+    padding: 3px 10px; border-radius: 20px;
+    background: var(--surface2); border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  /* ── 토론 메시지 버블 (강화) ── */
+  .debate-msg { display: flex; gap: 13px; animation: fadeUp .35s ease; align-items: flex-start; }
+  .debate-msg.right { flex-direction: row-reverse; }
+
+  .debate-avatar {
+    width: 40px; height: 40px; border-radius: 13px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 19px;
+    border: 1px solid var(--border);
+  }
+
+  .debate-bubble-wrap { display: flex; flex-direction: column; gap: 5px; max-width: 78%; }
+  .debate-msg.right .debate-bubble-wrap { align-items: flex-end; }
+
+  .debate-bubble-name { font-size: 11px; font-weight: 700; padding: 0 5px; letter-spacing: 0.2px; }
+
+  .debate-bubble {
+    border-radius: 18px; padding: 13px 17px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+  }
+  .debate-msg.right .debate-bubble {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.06);
+  }
+  /* 좌측 버블 꼬리 */
+  .debate-msg:not(.right) .debate-bubble::before {
+    content: ''; position: absolute; left: -6px; top: 14px;
+    width: 10px; height: 10px;
+    background: var(--surface); border-left: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    transform: rotate(45deg); clip-path: polygon(0 0, 0 100%, 100% 100%);
+  }
+  .debate-msg.right .debate-bubble::before {
+    content: ''; position: absolute; right: -6px; top: 14px;
+    width: 10px; height: 10px;
+    background: rgba(255,255,255,0.04); border-right: 1px solid rgba(255,255,255,0.06); border-top: 1px solid rgba(255,255,255,0.06);
+    transform: rotate(45deg); clip-path: polygon(0 0, 100% 0, 100% 100%);
+  }
+
+  .debate-bubble-text { font-size: 13px; color: var(--text-dim); line-height: 1.75; }
+  .debate-bubble-text strong { color: var(--text); font-weight: 600; }
+
+  .debate-bubble-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .debate-bubble-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 9.5px; padding: 3px 10px; border-radius: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .debate-bubble-time { font-size: 9px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-left: auto; }
+
+  /* ── 판정 카드 (강화) ── */
+  .debate-verdict {
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(200,169,110,0.35);
+    animation: fadeUp .5s ease;
+    box-shadow: 0 4px 24px rgba(200,169,110,0.08);
+  }
+  .debate-verdict-header {
+    background: linear-gradient(135deg, rgba(200,169,110,0.16), rgba(126,184,247,0.08));
+    padding: 14px 20px 12px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid rgba(200,169,110,0.2);
+  }
+  .debate-verdict-icon { font-size: 22px; }
+  .debate-verdict-label {
+    font-size: 11px; color: var(--accent); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .debate-verdict-sub { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .debate-verdict-body { background: var(--surface); padding: 16px 20px; }
+  .debate-verdict-text { font-size: 13.5px; color: var(--text-dim); line-height: 1.8; }
+  .debate-verdict-scores {
+    display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .verdict-score-chip {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border-radius: 20px;
+    background: var(--surface2); border: 1px solid var(--border);
+    flex: 1; min-width: 100px;
+  }
+  .verdict-score-icon { font-size: 14px; }
+  .verdict-score-label { font-size: 11px; color: var(--text-muted); flex: 1; }
+  .verdict-score-num { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 15px; }
+  .verdict-score-bar { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+  .verdict-score-bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+  /* ── 타이핑 인디케이터 ── */
+  .debate-typing { display: flex; gap: 13px; align-items: flex-end; }
+  .typing-bubble {
+    display: flex; gap: 5px; padding: 13px 17px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+  }
+  .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: typingBounce 1.1s ease infinite; }
+  .typing-dot:nth-child(2) { animation-delay: .18s; }
+  .typing-dot:nth-child(3) { animation-delay: .36s; }
+  @keyframes typingBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* 에이전트 공통 상태 뱃지 */
+  .status-wait { background: rgba(107,114,128,0.15); color: var(--text-muted); border: 1px solid rgba(107,114,128,0.2); }
+  .status-thinking { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+  .status-done { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 8px var(--green);
+    animation: blink 1.8s ease infinite; flex-shrink: 0;
+  }
+  .live-dot.off { background: var(--text-muted); box-shadow: none; animation: none; opacity: 0.35; }
+
+  /* 완료 화면 */
+  .complete-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center; padding: 20px;
+  }
+  .complete-icon { font-size: 50px; }
+  .complete-title { font-family: 'Noto Serif KR', serif; font-size: 20px; font-weight: 700; }
+  .complete-desc { color: var(--text-muted); font-size: 12px; line-height: 1.8; }
+  .btn-result {
+    padding: 10px 26px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--accent), #d4a84b); color: #000;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s;
+  }
+  .btn-result:hover { transform: translateY(-2px); box-shadow: 0 6px 22px rgba(200,169,110,0.35); }
+
+  /* ── PAGE: RESULT ── */
+  #page-result {
+    flex-direction: column; overflow-y: auto;
+    padding: 32px 40px; gap: 24px;
+  }
+  .result-hero {
+    display: flex; gap: 32px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px;
+  }
+  .result-score-ring { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+  .result-score-ring svg { width: 120px; height: 120px; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+  .ring-fill { fill: none; stroke: url(#scoreGrad); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 339; stroke-dashoffset: 339; transition: stroke-dashoffset 1.5s ease; }
+  .ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-num { font-size: 28px; font-weight: 700; font-family: 'DM Mono', monospace; }
+  .ring-label { font-size: 11px; color: var(--text-muted); }
+  .result-summary { flex: 1; }
+  .result-grade { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .result-desc { font-size: 13px; color: var(--text-dim); line-height: 1.8; margin-bottom: 14px; }
+  .result-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .result-tag-good { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: rgba(74,222,128,0.1); color: var(--green); border: 1px solid rgba(74,222,128,0.2); }
+  .result-tag-bad { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: rgba(248,113,113,0.1); color: var(--red); border: 1px solid rgba(248,113,113,0.2); }
+  .qa-review { display: flex; flex-direction: column; gap: 16px; }
+  .qa-review-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .qa-q { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+  .qa-a { font-size: 13px; color: var(--text-dim); border-left: 2px solid var(--accent); padding-left: 12px; line-height: 1.7; }
+  .qa-empty { font-size: 13px; color: var(--text-muted); border-left: 2px solid var(--border); padding-left: 12px; font-style: italic; }
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .metric-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .metric-name { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+  .metric-bar-track { height: 6px; background: var(--border); border-radius: 3px; margin-bottom: 6px; }
+  .metric-bar-fill { height: 100%; border-radius: 3px; transition: width 1.2s ease; }
+  .metric-val { font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text-muted); }
+  .feedback-list { display: flex; flex-direction: column; gap: 12px; }
+  .feedback-item { display: flex; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .feedback-item.good { border-color: rgba(74,222,128,0.2); }
+  .feedback-item.bad { border-color: rgba(248,113,113,0.2); }
+  .feedback-icon { font-size: 20px; flex-shrink: 0; }
+  .feedback-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .feedback-desc { font-size: 12px; color: var(--text-dim); line-height: 1.7; }
+  .result-section-title { font-size: 14px; font-weight: 600; color: var(--text-dim); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 12px 24px; border-radius: 12px; font-size: 13px;
+    opacity: 0; pointer-events: none; transition: all .3s; z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── COMPLETE SCREEN ── */
+  .complete-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; gap: 20px; text-align: center; padding: 32px;
+  }
+  .complete-icon { font-size: 64px; }
+  .complete-title { font-family: 'Noto Serif KR', serif; font-size: 26px; font-weight: 700; }
+  .complete-desc { color: var(--text-muted); font-size: 14px; line-height: 1.8; }
+  .btn-result {
+    padding: 14px 36px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, var(--accent), #d4a84b); color: #000;
+    font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: all .2s;
+  }
+  .btn-result:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(200,169,110,0.35); }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     📱 모바일 반응형 (768px 이하)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /* 데스크톱: 하단 탭바 숨김 */
+  #mobile-nav { display: none; }
+  .iv-mobile-tabs { display: none; }
+
+  @media (max-width: 768px) {
+    #app { flex-direction: column; height: 100dvh; overflow: hidden; }
+    #sidebar { display: none; }
+    #main { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+    /* 상단바 */
+    #topbar { height: 48px; padding: 0 16px; }
+    .topbar-title { font-size: 13px; }
+    .topbar-tag { font-size: 10px; padding: 2px 8px; }
+    .topbar-right { display: none; }
+
+    /* 하단 탭바 표시 */
+    #mobile-nav {
+      display: flex; flex-shrink: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      height: 58px;
+    }
+    .mobile-nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px; cursor: pointer; transition: all .15s;
+      color: var(--text-muted); font-size: 9.5px; font-weight: 600;
+      border-top: 2px solid transparent; padding-bottom: 4px;
+    }
+    .mobile-nav-item .m-icon { font-size: 19px; line-height: 1; }
+    .mobile-nav-item.active { color: var(--accent); border-top-color: var(--accent); background: rgba(200,169,110,0.05); }
+
+    /* 일반 페이지 */
+    #page-resume, #page-job, #page-result { padding: 18px 16px; gap: 16px; }
+    .section-title { font-size: 18px; }
+    .section-sub { font-size: 12px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+    .job-fields { grid-template-columns: 1fr; }
+    .job-field { border-right: none !important; }
+    .job-result-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .job-cta { flex-direction: column; gap: 12px; }
+    .result-hero { flex-direction: column; align-items: center; text-align: center; padding: 20px; gap: 20px; }
+    .metric-grid { grid-template-columns: 1fr; }
+
+    /* 면접 페이지 */
+    #page-interview { flex-direction: column; }
+    .iv-main { flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+
+    /* 모바일 면접 탭 헤더 */
+    .iv-mobile-tabs {
+      display: flex; flex-shrink: 0;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .iv-mobile-tab {
+      flex: 1; padding: 11px 8px; text-align: center;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      color: var(--text-muted); border-bottom: 2px solid transparent;
+      transition: all .2s;
+    }
+    .iv-mobile-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(200,169,110,0.04); }
+
+    /* 탭 전환: 기본 숨김 */
+    .iv-qa-col { display: none; width: 100%; border-right: none; flex: 1; }
+    .iv-debate-col { display: none; flex: 1; }
+    .iv-qa-col.mob-active { display: flex; }
+    .iv-debate-col.mob-active { display: flex; }
+
+    /* 질문 카드 */
+    .iv-top { padding: 14px 16px; gap: 12px; }
+    .current-q { padding: 16px 18px; border-radius: 12px; }
+    .q-text { font-size: 15px; line-height: 1.7; }
+    .q-hint { font-size: 11px; padding: 8px 12px; margin-top: 10px; }
+    .q-agent-badge { font-size: 11px; padding: 4px 10px; }
+    .q-num { font-size: 11px; }
+
+    /* 답변 입력 */
+    .answer-area { padding: 12px 14px; gap: 8px; }
+    .answer-area textarea { min-height: 90px; font-size: 13px; padding: 10px 12px; }
+    .timer-badge { font-size: 12px; padding: 4px 10px; }
+    .btn-submit { padding: 7px 16px; font-size: 12px; }
+    .btn-skip { padding: 6px 10px; font-size: 11px; }
+
+    /* 진행 바 */
+    .progress-bar-wrap { padding: 8px 12px; }
+    .progress-dot { width: 22px; height: 22px; font-size: 10px; }
+    .progress-label { font-size: 10px; }
+
+    /* 토론 패널 */
+    .debate-header { padding: 10px 16px 9px; }
+    .debate-header-title { font-size: 14px; }
+    .debate-header-sub { font-size: 10px; }
+    .debate-feed { padding: 14px 14px; gap: 14px; }
+    .debate-bubble-text { font-size: 12px; line-height: 1.7; }
+    .debate-bubble { padding: 10px 13px; border-radius: 14px; }
+    .debate-avatar { width: 32px; height: 32px; font-size: 15px; border-radius: 10px; }
+    .debate-bubble-wrap { max-width: 88%; }
+    .debate-bubble-name { font-size: 10px; }
+    .dab-agent { padding: 8px 4px 7px; }
+    .dab-agent-avatar { width: 26px; height: 26px; font-size: 13px; border-radius: 7px; }
+    .dab-agent-name { font-size: 8.5px; }
+    .dab-agent-pill { font-size: 7px; padding: 1px 5px; }
+
+    /* 시작/완료 화면 */
+    .start-screen { padding: 20px 16px; gap: 12px; }
+    .start-title { font-size: 17px; }
+    .start-desc { font-size: 12px; }
+    .start-icon { font-size: 36px; }
+    .complete-title { font-size: 20px; }
+    .complete-icon { font-size: 48px; }
+    .complete-desc { font-size: 13px; }
+
+    /* 판정 카드 */
+    .debate-verdict-scores { flex-direction: column; }
+    .verdict-score-chip { min-width: unset; }
+
+    /* 이전 답변 */
+    .prev-qa { padding: 10px 12px; }
+    .prev-q-text { font-size: 10px; }
+    .prev-a-text { font-size: 11px; }
+
+    /* 스플래시 */
+    .splash-logo { font-size: 32px; }
+    .splash-sub { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">InterviewAI</div>
+  <div class="splash-sub">AI 면접 연습 시스템</div>
+  <div class="splash-bar"><div class="splash-bar-inner"></div></div>
+</div>
+
+<div id="app">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="logo">InterviewAI</div>
+    <div class="nav">
+      <div class="nav-item active" data-page="resume" onclick="goPage('resume')">
+        <span class="icon">📄</span> 이력서 입력
+      </div>
+      <div class="nav-item" data-page="job" onclick="goPage('job')">
+        <span class="icon">🏢</span> 채용공고 분석
+      </div>
+      <div class="nav-item" data-page="interview" onclick="goPage('interview')">
+        <span class="icon">🎙️</span> AI 면접 진행
+      </div>
+      <div class="nav-item" data-page="result" onclick="goPage('result')">
+        <span class="icon">📊</span> 면접 결과
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      STEP 1 → 2 → 3 순서로<br>진행하는 것을 권장합니다
+    </div>
+  </div>
+
+  <!-- 모바일 하단 탭바 -->
+  <div id="mobile-nav">
+    <div class="mobile-nav-item active" data-page="resume" onclick="goPage('resume')">
+      <span class="m-icon">📄</span>이력서
+    </div>
+    <div class="mobile-nav-item" data-page="job" onclick="goPage('job')">
+      <span class="m-icon">🏢</span>채용공고
+    </div>
+    <div class="mobile-nav-item" data-page="interview" onclick="goPage('interview')">
+      <span class="m-icon">🎙️</span>AI면접
+    </div>
+    <div class="mobile-nav-item" data-page="result" onclick="goPage('result')">
+      <span class="m-icon">📊</span>결과
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <span class="topbar-title" id="topbar-title">이력서 입력</span>
+      <span class="topbar-tag" id="topbar-tag">STEP 1</span>
+      <div class="topbar-right">
+        <button class="btn-sm" onclick="goPage('job')">채용공고 분석 →</button>
+        <button class="btn-sm" onclick="goPage('interview')">면접 바로가기 →</button>
+      </div>
+    </div>
+
+    <!-- PAGE: RESUME -->
+    <div id="page-resume" class="page active">
+      <div>
+        <div class="section-title">이력서 입력</div>
+        <div class="section-sub">기본 정보를 입력하면 AI 면접관이 맞춤 질문을 준비합니다.</div>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">👤 기본 정보</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>이름</label>
+            <input type="text" placeholder="홍길동" id="r-name" />
+          </div>
+          <div class="form-group">
+            <label>지원 직무</label>
+            <input type="text" placeholder="프론트엔드 개발자" id="r-job" />
+          </div>
+          <div class="form-group full">
+            <label>학력</label>
+            <input type="text" placeholder="OO대학교 컴퓨터공학과 졸업 (2024)" id="r-edu" />
+          </div>
+          <div class="form-group full">
+            <label>주요 경험 (경력, 프로젝트, 인턴 등)</label>
+            <textarea rows="3" placeholder="React 기반 웹 서비스 프론트엔드 개발, 팀 리더 역할 수행..." id="r-exp"></textarea>
+          </div>
+          <div class="form-group full">
+            <label>자격증 / 수상</label>
+            <input type="text" placeholder="정보처리기사, 웹디자인기능사" id="r-cert" />
+          </div>
+        </div>
+      </div>
+      <div class="page-actions">
+        <button class="btn-next" onclick="goPage('job')">다음: 채용공고 분석 →</button>
+      </div>
+    </div>
+
+    <!-- PAGE: JOB -->
+    <div id="page-job" class="page">
+
+      <div>
+        <div class="section-title">채용공고 분석</div>
+        <div class="section-sub">채용공고 URL을 입력하면 회사 정보, 담당 업무, 자격 요건 등을 자동으로 정리합니다.</div>
+      </div>
+
+      <!-- URL 입력 -->
+      <div class="form-card">
+        <div class="form-card-title">🔗 채용공고 URL</div>
+        <div class="url-row">
+          <input type="url" id="job-url-input" placeholder="https://www.wanted.co.kr/wd/..." />
+          <button class="btn-analyze" id="analyze-btn" onclick="analyzeJob()">분석하기</button>
+        </div>
+        <div class="url-hint" style="margin-top:12px;">
+          <span>✓ 원티드</span>
+          <span>✓ 사람인</span>
+          <span>✓ 잡코리아</span>
+          <span>✓ 링크드인</span>
+          <span>✓ 회사 채용 페이지</span>
+        </div>
+      </div>
+
+      <!-- 로딩 -->
+      <div class="job-loading" id="job-loading">
+        <div class="loading-spinner"></div>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">채용공고를 분석하는 중입니다...</div>
+          <div style="font-size:12px;color:var(--text-muted);">담당 업무, 필수 요건, 우대 사항을 추출합니다.</div>
+        </div>
+      </div>
+
+      <!-- 분석 결과 -->
+      <div class="job-result-card" id="job-result-card">
+        <div class="job-result-header">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">분석 완료</div>
+            <div class="job-company" id="job-company">—</div>
+          </div>
+          <div class="job-url-badge" id="job-url-badge">—</div>
+        </div>
+        <div class="job-fields">
+          <div class="job-field">
+            <div class="job-field-label">담당 업무</div>
+            <div class="job-field-value" id="jf-tasks">—</div>
+          </div>
+          <div class="job-field">
+            <div class="job-field-label">필수 자격 요건</div>
+            <div class="job-field-value" id="jf-required">—</div>
+          </div>
+          <div class="job-field">
+            <div class="job-field-label">우대 사항</div>
+            <div class="job-chips" id="jf-preferred">—</div>
+          </div>
+          <div class="job-field">
+            <div class="job-field-label">기술 스택</div>
+            <div class="job-chips" id="jf-stack"></div>
+          </div>
+          <div class="job-field" style="grid-column:1/-1;border-bottom:none;">
+            <div class="job-field-label">복리후생 / 기타</div>
+            <div class="job-chips" id="jf-benefits"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="job-cta" id="job-cta">
+        <div class="job-cta-text">채용공고 분석이 완료되었습니다. <strong>면접 단계</strong>로 이동해 AI 면접을 시작해보세요.</div>
+        <button class="btn-next" onclick="startInterview()">면접 시작하기 →</button>
+      </div>
+
+    </div>
+
+    <!-- PAGE: INTERVIEW -->
+    <div id="page-interview" class="page">
+
+      <!-- 중앙+우측 -->
+      <div class="iv-main">
+
+        <!-- 모바일 전용: 질문↔토론 탭 전환 -->
+        <div class="iv-mobile-tabs">
+          <div class="iv-mobile-tab active" id="mob-tab-qa" onclick="switchMobTab('qa')">🎙️ 질문 &amp; 답변</div>
+          <div class="iv-mobile-tab" id="mob-tab-debate" onclick="switchMobTab('debate')">💬 AI 토론 <span id="mob-debate-badge" style="display:none;background:var(--red);color:#fff;font-size:8px;padding:1px 5px;border-radius:8px;margin-left:3px;">NEW</span></div>
+        </div>
+
+        <!-- 질문/답변 컬럼 -->
+        <div class="iv-qa-col mob-active">
+          <div class="iv-top" id="iv-top">
+
+            <!-- START SCREEN -->
+            <div class="start-screen" id="start-screen">
+              <div class="start-icon">🎙️</div>
+              <div class="start-title">AI 면접 시작</div>
+              <div class="start-desc">
+                16개 질문 중 <strong style="color:var(--accent);">4개</strong> 랜덤 선택<br>
+                답변 후 AI 면접관 5명이 실시간 토론합니다
+              </div>
+              <div class="start-chips">
+                <span class="start-chip">⏱ 2분 30초</span>
+                <span class="start-chip">📋 4문항</span>
+                <span class="start-chip">💬 실시간 토론</span>
+              </div>
+              <button class="btn-start" onclick="beginInterview()">면접 시작하기</button>
+            </div>
+
+            <!-- 면접 진행 중 -->
+            <div id="interview-content" style="display:none;flex-direction:column;gap:10px;">
+
+              <!-- 진행 표시 -->
+              <div class="progress-bar-wrap" id="progress-wrap">
+                <div class="progress-steps" id="progress-steps"></div>
+                <div class="progress-line"><div class="progress-line-fill" id="progress-fill" style="width:0%"></div></div>
+                <div class="progress-label" id="progress-label">0 / 4</div>
+              </div>
+
+              <!-- 현재 질문 -->
+              <div class="current-q" id="current-q-card">
+                <div class="q-meta">
+                  <span class="q-agent-badge" id="q-agent-badge" style="background:rgba(200,169,110,0.12);border:1px solid rgba(200,169,110,0.2);color:var(--accent);">🎤 면접관</span>
+                  <span class="q-num" id="q-num">Q1 / 4</span>
+                </div>
+                <div class="q-text" id="q-text">질문 로딩 중...</div>
+                <div class="q-category" id="q-category"></div>
+                <div class="q-hint" id="q-hint">💡 구체적인 경험을 중심으로 답변해보세요.</div>
+              </div>
+
+              <!-- 이전 답변 -->
+              <div id="prev-answers" style="display:flex;flex-direction:column;gap:8px;"></div>
+
+              <!-- 완료 -->
+              <div class="complete-screen" id="complete-screen" style="display:none;">
+                <div class="complete-icon">🎉</div>
+                <div class="complete-title">모든 질문 완료!</div>
+                <div class="complete-desc">우측 토론 패널에서<br>AI 면접관 최종 의견을 확인하세요.</div>
+                <button class="btn-result" onclick="goToResult()">최종 결과 확인 →</button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 답변 입력 -->
+          <div class="answer-area" id="answer-area" style="display:none;">
+            <div class="answer-area-label">✍️ 답변 입력</div>
+            <textarea id="answer-input" placeholder="면접관의 질문에 답변을 입력하세요... STAR 기법(상황→과제→행동→결과)을 활용해보세요."></textarea>
+            <div class="answer-controls">
+              <div class="timer-badge" id="timer">02:30</div>
+              <span style="font-size:10px;color:var(--text-muted);">권장 2분 30초</span>
+              <button class="btn-skip" onclick="skipQuestion()">건너뛰기</button>
+              <button class="btn-submit" id="submit-btn" onclick="submitAnswer()">제출 →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ━━ 토론 패널 (우측 메인, 넓게) ━━ -->
+        <div class="iv-debate-col">
+
+          <!-- 토론 헤더 -->
+          <div class="debate-header">
+            <div class="debate-header-left">
+              <div class="debate-header-title">
+                <div class="live-dot off" id="debate-live-dot"></div>
+                💬 에이전트 실시간 토론
+              </div>
+              <div class="debate-header-sub" id="debate-sub">면접 시작 후 활성화됩니다</div>
+            </div>
+            <div class="debate-tabs">
+              <button class="debate-tab active" onclick="switchTab(this,'all')">전체</button>
+              <button class="debate-tab" onclick="switchTab(this,'critical')">핵심만</button>
+            </div>
+          </div>
+
+          <!-- 에이전트 상태바 -->
+          <div class="debate-agents-bar" id="debate-agents-bar">
+            <div class="dab-agent" id="dab1">
+              <div class="dab-agent-avatar" style="background:rgba(200,169,110,0.12);">🔍</div>
+              <div class="dab-agent-name">검증</div>
+              <div class="dab-agent-pill" id="dab1-pill">대기</div>
+              <div class="dab-agent-score-line"><div class="dab-agent-score-fill" id="dab1-fill" style="background:var(--accent)"></div></div>
+            </div>
+            <div class="dab-agent" id="dab2">
+              <div class="dab-agent-avatar" style="background:rgba(248,113,113,0.12);">💢</div>
+              <div class="dab-agent-name">압박</div>
+              <div class="dab-agent-pill" id="dab2-pill">대기</div>
+              <div class="dab-agent-score-line"><div class="dab-agent-score-fill" id="dab2-fill" style="background:var(--red)"></div></div>
+            </div>
+            <div class="dab-agent" id="dab3">
+              <div class="dab-agent-avatar" style="background:rgba(126,184,247,0.12);">💼</div>
+              <div class="dab-agent-name">실무</div>
+              <div class="dab-agent-pill" id="dab3-pill">대기</div>
+              <div class="dab-agent-score-line"><div class="dab-agent-score-fill" id="dab3-fill" style="background:var(--accent2)"></div></div>
+            </div>
+            <div class="dab-agent" id="dab4">
+              <div class="dab-agent-avatar" style="background:rgba(74,222,128,0.12);">🌱</div>
+              <div class="dab-agent-name">성장</div>
+              <div class="dab-agent-pill" id="dab4-pill">대기</div>
+              <div class="dab-agent-score-line"><div class="dab-agent-score-fill" id="dab4-fill" style="background:var(--green)"></div></div>
+            </div>
+            <div class="dab-agent" id="dab5">
+              <div class="dab-agent-avatar" style="background:rgba(167,139,250,0.12);">🤝</div>
+              <div class="dab-agent-name">조직적합</div>
+              <div class="dab-agent-pill" id="dab5-pill">대기</div>
+              <div class="dab-agent-score-line"><div class="dab-agent-score-fill" id="dab5-fill" style="background:var(--accent3)"></div></div>
+            </div>
+          </div>
+
+          <!-- 토론 피드 -->
+          <div class="debate-feed" id="debate-feed">
+            <div class="debate-empty" id="debate-empty">
+              <div class="debate-empty-icon">💬</div>
+              <div class="debate-empty-text">답변을 제출하면<br>AI 면접관 5명이 실시간으로<br>의견을 교환합니다</div>
+              <div class="debate-empty-hint">검증 · 압박 · 실무 · 성장 · 조직적합<br>각기 다른 관점에서 당신의 답변을 분석합니다</div>
+            </div>
+          </div>
+
+        </div><!-- /.iv-debate-col -->
+
+      </div><!-- /.iv-main -->
+
+      <!-- 질문 풀은 숨김 (JS에서 랜덤 4개 선택만 유지) -->
+      <div id="qbank-grid" style="display:none;"></div>
+
+    </div><!-- /#page-interview -->
+
+    <!-- PAGE: RESULT -->
+    <div id="page-result" class="page">
+      <div class="section-title">면접 결과 분석</div>
+
+      <!-- SCORE HERO -->
+      <div class="result-hero">
+        <div class="result-score-ring">
+          <svg viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#c8a96e"/>
+                <stop offset="100%" stop-color="#7eb8f7"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="60" cy="60" r="54"/>
+            <circle class="ring-fill" id="score-ring" cx="60" cy="60" r="54"/>
+          </svg>
+          <div class="ring-text">
+            <div class="ring-num" id="score-num">—</div>
+            <div class="ring-label">/ 100</div>
+          </div>
+        </div>
+        <div class="result-summary">
+          <div class="result-grade" id="result-grade">—</div>
+          <div class="result-desc" id="result-desc">평가를 완료한 후 결과가 표시됩니다.</div>
+          <div class="result-tags" id="result-tags"></div>
+        </div>
+      </div>
+
+      <!-- Q&A REVIEW -->
+      <div class="result-section-title">📝 답변 리뷰</div>
+      <div class="qa-review" id="qa-review"></div>
+
+      <!-- METRICS -->
+      <div class="result-section-title">📊 항목별 평가</div>
+      <div class="metric-grid" id="metric-grid"></div>
+
+      <!-- FEEDBACK -->
+      <div class="result-section-title">💡 맞춤 피드백</div>
+      <div class="feedback-list" id="feedback-list"></div>
+
+      <div class="page-actions" style="padding-top:8px;">
+        <button class="btn-sm" onclick="resetInterview()">← 다시 시작</button>
+        <button class="btn-next" onclick="resetInterview()">새 면접 시작</button>
+      </div>
+    </div>
+
+  </div><!-- /#main -->
+</div><!-- /#app -->
+
+<div id="toast"></div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 16개 공통 질문 풀
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const QUESTION_POOL = [
+  {
+    id: 1, category: '① 자기소개·지원동기',
+    text: '본인의 핵심 경험 1가지를 중심으로 1분 자기소개를 해주세요.',
+    hint: '💡 경험 → 역할 → 배운 점 순서로 구조화해보세요.',
+    agent: { icon: '🔍', label: '검증 면접관', color: 'rgba(74,222,128,0.12)', borderColor: 'rgba(74,222,128,0.3)', textColor: '#4ade80' }
+  },
+  {
+    id: 2, category: '① 자기소개·지원동기',
+    text: '지원 직무를 선택한 이유를, 본인의 경험과 연결해서 설명해주세요.',
+    hint: '💡 단순한 관심보다 구체적 계기나 경험이 연결되면 더 설득력이 있습니다.',
+    agent: { icon: '🌱', label: '성장 면접관', color: 'rgba(74,222,128,0.12)', borderColor: 'rgba(74,222,128,0.3)', textColor: '#4ade80' }
+  },
+  {
+    id: 3, category: '② 강점·약점',
+    text: '본인의 강점이 실제 성과로 이어진 경험을 하나 설명해주세요.',
+    hint: '💡 강점이 무엇인지보다 어떻게 활용했는지에 집중하세요.',
+    agent: { icon: '💼', label: '실무 면접관', color: 'rgba(126,184,247,0.12)', borderColor: 'rgba(126,184,247,0.3)', textColor: '#7eb8f7' }
+  },
+  {
+    id: 4, category: '② 강점·약점',
+    text: '본인의 약점이 드러났던 상황과 개선을 위해 어떤 행동을 취했는지 설명해주세요.',
+    hint: '💡 약점 자체보다 그것을 어떻게 극복했는지가 핵심입니다.',
+    agent: { icon: '🌱', label: '성장 면접관', color: 'rgba(74,222,128,0.12)', borderColor: 'rgba(74,222,128,0.3)', textColor: '#4ade80' }
+  },
+  {
+    id: 5, category: '③ 직무 경험',
+    text: '지원 직무와 가장 관련 있는 경험 1가지를 선택해 문제 상황, 해결 과정, 결과를 설명해주세요.',
+    hint: '💡 STAR 구조(상황-과제-행동-결과)로 설명하면 명확합니다.',
+    agent: { icon: '💢', label: '압박 면접관', color: 'rgba(248,113,113,0.12)', borderColor: 'rgba(248,113,113,0.3)', textColor: '#f87171' }
+  },
+  {
+    id: 6, category: '③ 직무 경험',
+    text: '해당 경험에서 사용한 기술이나 지식이 실제 업무에서 어떻게 활용될 수 있는지 설명해주세요.',
+    hint: '💡 학습한 내용이 실제로 어떤 가치를 만들 수 있는지 연결해보세요.',
+    agent: { icon: '💼', label: '실무 면접관', color: 'rgba(126,184,247,0.12)', borderColor: 'rgba(126,184,247,0.3)', textColor: '#7eb8f7' }
+  },
+  {
+    id: 7, category: '④ 프로젝트 기여도',
+    text: '프로젝트에서 본인이 담당한 역할과 기여도를 구체적으로 설명해주세요.',
+    hint: '💡 "같이 했습니다"보다 "제가 담당한 부분은..."으로 구체화하세요.',
+    agent: { icon: '🔍', label: '검증 면접관', color: 'rgba(200,169,110,0.12)', borderColor: 'rgba(200,169,110,0.3)', textColor: '#c8a96e' }
+  },
+  {
+    id: 8, category: '④ 프로젝트 기여도',
+    text: '프로젝트 결과를 수치나 지표로 설명할 수 있나요?',
+    hint: '💡 "개선되었다"보다 "X% 향상", "처리 시간 Y초 단축" 등 구체적 수치를 활용하세요.',
+    agent: { icon: '💢', label: '압박 면접관', color: 'rgba(248,113,113,0.12)', borderColor: 'rgba(248,113,113,0.3)', textColor: '#f87171' }
+  },
+  {
+    id: 9, category: '⑤ 전공·직무 연결',
+    text: '전공을 선택하게 된 계기와 현재 지원 직무와의 연결점을 설명해주세요.',
+    hint: '💡 학문적 관심이 실무와 어떻게 연결되는지 보여주세요.',
+    agent: { icon: '🌱', label: '성장 면접관', color: 'rgba(74,222,128,0.12)', borderColor: 'rgba(74,222,128,0.3)', textColor: '#4ade80' }
+  },
+  {
+    id: 10, category: '⑤ 전공·직무 연결',
+    text: '전공에서 배운 내용 중 실제로 활용 가능한 지식 1가지를 설명해주세요.',
+    hint: '💡 이론적 내용이라도 실무에 어떻게 적용할 수 있는지 설명해보세요.',
+    agent: { icon: '💼', label: '실무 면접관', color: 'rgba(126,184,247,0.12)', borderColor: 'rgba(126,184,247,0.3)', textColor: '#7eb8f7' }
+  },
+  {
+    id: 11, category: '⑥ 실패·스트레스 대응',
+    text: '실패했던 경험과 이후 변화된 행동이나 사고방식을 설명해주세요.',
+    hint: '💡 실패 자체보다 그 이후의 변화와 성장이 더 중요합니다.',
+    agent: { icon: '🌱', label: '성장 면접관', color: 'rgba(74,222,128,0.12)', borderColor: 'rgba(74,222,128,0.3)', textColor: '#4ade80' }
+  },
+  {
+    id: 12, category: '⑥ 실패·스트레스 대응',
+    text: '스트레스를 받는 상황에서 문제 해결을 위해 어떤 행동을 취하는지 설명해주세요.',
+    hint: '💡 구체적인 사례를 들어 설명하면 더 신뢰감이 생깁니다.',
+    agent: { icon: '🤝', label: '조직적합 면접관', color: 'rgba(167,139,250,0.12)', borderColor: 'rgba(167,139,250,0.3)', textColor: '#a78bfa' }
+  },
+  {
+    id: 13, category: '⑦ 조직 적응·협업',
+    text: '팀원 또는 상사와 의견이 충돌했던 경험과 그 결과를 설명해주세요.',
+    hint: '💡 갈등을 어떻게 해결했는지 구체적 과정을 보여주세요.',
+    agent: { icon: '🤝', label: '조직적합 면접관', color: 'rgba(167,139,250,0.12)', borderColor: 'rgba(167,139,250,0.3)', textColor: '#a78bfa' }
+  },
+  {
+    id: 14, category: '⑦ 조직 적응·협업',
+    text: '조직에서 맡은 역할 이상으로 행동했던 경험이 있다면 설명해주세요.',
+    hint: '💡 주도적으로 나선 계기와 그 결과를 함께 설명해보세요.',
+    agent: { icon: '🔍', label: '검증 면접관', color: 'rgba(200,169,110,0.12)', borderColor: 'rgba(200,169,110,0.3)', textColor: '#c8a96e' }
+  },
+  {
+    id: 15, category: '⑧ 마무리',
+    text: '이 직무에 적합한 인재라고 생각하는 이유를 경험을 근거로 정리해주세요.',
+    hint: '💡 직무 요건과 본인의 강점을 연결해 설득력 있게 정리하세요.',
+    agent: { icon: '💼', label: '실무 면접관', color: 'rgba(126,184,247,0.12)', borderColor: 'rgba(126,184,247,0.3)', textColor: '#7eb8f7' }
+  },
+  {
+    id: 16, category: '⑧ 마무리',
+    text: '마지막으로, 본인을 채용해야 하는 이유를 한 문장으로 설명해주세요.',
+    hint: '💡 압축된 한 문장이지만, 핵심 강점과 기여 가치를 담아보세요.',
+    agent: { icon: '💢', label: '압박 면접관', color: 'rgba(248,113,113,0.12)', borderColor: 'rgba(248,113,113,0.3)', textColor: '#f87171' }
+  }
+];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 상태 관리
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let selectedQuestions = [];  // 랜덤 4개
+let currentIdx = 0;          // 현재 질문 인덱스
+let answers = [];            // 답변 배열
+let timerInterval = null;
+let timerSecs = 150;
+let interviewStarted = false;
+
+// ── 유틸
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── 페이지 이동
+const pageMeta = {
+  resume:    { title: '이력서 입력',    tag: 'STEP 1' },
+  job:       { title: '채용공고 분석',  tag: 'STEP 2' },
+  interview: { title: 'AI 면접 진행',  tag: 'STEP 3 · LIVE' },
+  result:    { title: '면접 결과 분석', tag: 'STEP 4' },
+};
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  // 데스크톱 사이드바
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const ni = document.querySelector(`.nav-item[data-page=${id}]`);
+  if (ni) ni.classList.add('active');
+  // 모바일 하단 탭바
+  document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
+  const mni = document.querySelector(`.mobile-nav-item[data-page=${id}]`);
+  if (mni) mni.classList.add('active');
+  const meta = pageMeta[id];
+  if (meta) {
+    document.getElementById('topbar-title').textContent = meta.title;
+    document.getElementById('topbar-tag').textContent = meta.tag;
+  }
+}
+
+// ── 모바일 면접 탭 전환 (질문 ↔ 토론)
+function switchMobTab(tab) {
+  const qaCol = document.querySelector('.iv-qa-col');
+  const debateCol = document.querySelector('.iv-debate-col');
+  const tabQa = document.getElementById('mob-tab-qa');
+  const tabDebate = document.getElementById('mob-tab-debate');
+  if (tab === 'qa') {
+    qaCol.classList.add('mob-active');
+    debateCol.classList.remove('mob-active');
+    tabQa.classList.add('active');
+    tabDebate.classList.remove('active');
+  } else {
+    debateCol.classList.add('mob-active');
+    qaCol.classList.remove('mob-active');
+    tabDebate.classList.add('active');
+    tabQa.classList.remove('active');
+    // 뱃지 숨기기
+    const badge = document.getElementById('mob-debate-badge');
+    if (badge) badge.style.display = 'none';
+  }
+}
+
+// ── 면접 시작 (이력서 → 채용공고 페이지)
+function startInterview() {
+  goPage('interview');
+  initQBank();
+}
+
+// ── 채용공고 분석 (데모)
+const JOB_DEMO_DATA = [
+  {
+    company: '카카오 · 프론트엔드 개발자',
+    tasks: 'React 기반 웹 서비스 개발 및 유지보수\n사용자 경험 개선을 위한 UI/UX 구현\n성능 최적화 및 코드 품질 관리',
+    required: '웹 프론트엔드 개발 경력 3년 이상\nReact, TypeScript 실무 경험\nRESTful API 연동 경험',
+    preferred: ['Next.js 경험', 'GraphQL', 'CI/CD 이해', '오픈소스 기여'],
+    stack: ['React', 'TypeScript', 'Next.js', 'GraphQL', 'Jest'],
+    benefits: ['스톡옵션', '유연근무제', '연간 교육비 지원', '원격근무 가능']
+  },
+  {
+    company: '네이버 · 백엔드 개발자',
+    tasks: 'Spring Boot 기반 API 서버 설계 및 개발\n대용량 트래픽 처리를 위한 시스템 설계\n데이터베이스 최적화 및 성능 튜닝',
+    required: 'Java/Kotlin 백엔드 개발 경력 2년 이상\nSpring Framework 실무 경험\nRDB 및 NoSQL 사용 경험',
+    preferred: ['MSA 경험', 'Kafka/RabbitMQ', 'AWS/GCP', 'Docker/K8s'],
+    stack: ['Java', 'Kotlin', 'Spring Boot', 'MySQL', 'Redis', 'Kafka'],
+    benefits: ['사내 카페테리아', '자유 복장', '경조사 지원', '건강검진']
+  },
+  {
+    company: '토스 · 데이터 분석가',
+    tasks: '금융 데이터 분석 및 인사이트 도출\n지표 설계 및 대시보드 구축\nA/B 테스트 설계 및 결과 분석',
+    required: 'SQL 고급 활용 능력\nPython 데이터 분석 경험\n통계 기초 지식',
+    preferred: ['Tableau/Looker 경험', '머신러닝 기초', '금융 도메인 이해', 'Spark'],
+    stack: ['Python', 'SQL', 'Tableau', 'Spark', 'Airflow'],
+    benefits: ['주 4일제 선택', '장비 지원', '교육비 전액 지원', '식비 지원']
+  }
+];
+
+function analyzeJob() {
+  const url = document.getElementById('job-url-input').value.trim();
+  if (!url) {
+    showToast('🔗 URL을 입력해주세요.');
+    return;
+  }
+  if (!url.startsWith('http')) {
+    showToast('⚠️ 올바른 URL 형식으로 입력해주세요.');
+    return;
+  }
+
+  const btn = document.getElementById('analyze-btn');
+  btn.textContent = '분석중...'; btn.disabled = true;
+  document.getElementById('job-loading').classList.add('show');
+  document.getElementById('job-result-card').classList.remove('show');
+  document.getElementById('job-cta').classList.remove('show');
+
+  setTimeout(() => {
+    const demo = JOB_DEMO_DATA[Math.floor(Math.random() * JOB_DEMO_DATA.length)];
+
+    document.getElementById('job-company').textContent = demo.company;
+    document.getElementById('job-url-badge').textContent = url.replace(/^https?:\/\//, '').slice(0, 40) + (url.length > 45 ? '...' : '');
+    document.getElementById('jf-tasks').innerHTML = demo.tasks.split('\n').map(t => `• ${t}`).join('<br>');
+    document.getElementById('jf-required').innerHTML = demo.required.split('\n').map(t => `• ${t}`).join('<br>');
+    document.getElementById('jf-preferred').innerHTML = demo.preferred.map(p => `<span class="chip">${p}</span>`).join('');
+    document.getElementById('jf-stack').innerHTML = demo.stack.map(s => `<span class="chip blue">${s}</span>`).join('');
+    document.getElementById('jf-benefits').innerHTML = demo.benefits.map(b => `<span class="chip green">${b}</span>`).join('');
+
+    document.getElementById('job-loading').classList.remove('show');
+    document.getElementById('job-result-card').classList.add('show');
+    document.getElementById('job-cta').classList.add('show');
+    btn.textContent = '재분석'; btn.disabled = false;
+    showToast('✅ 채용공고 분석이 완료되었습니다!');
+  }, 1600);
+}
+
+// ── 질문 뱅크 그리드 초기화 (스크롤 리스트)
+function initQBank() {
+  const grid = document.getElementById('qbank-grid');
+  grid.innerHTML = '';
+
+  // 카테고리별 그룹핑
+  const groups = {};
+  QUESTION_POOL.forEach((q, i) => {
+    const cat = q.category;
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push({ q, i });
+  });
+
+  Object.entries(groups).forEach(([cat, items]) => {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'qpool-group-label';
+    labelEl.textContent = cat;
+    grid.appendChild(labelEl);
+
+    items.forEach(({ q, i }) => {
+      const div = document.createElement('div');
+      div.className = 'qbank-item';
+      div.id = 'qbank-' + i;
+      div.innerHTML = `
+        <div class="qbank-num">${q.agent.icon} Q${String(q.id).padStart(2,'0')}</div>
+        <div class="qbank-item-text">${q.text}</div>
+        <div class="qbank-item-agent" style="color:${q.agent.textColor}">${q.agent.label}</div>
+      `;
+      grid.appendChild(div);
+    });
+  });
+
+  
+  
+}
+
+// ── 실제 면접 시작
+function beginInterview() {
+  // 16개 중 랜덤 4개 선택
+  selectedQuestions = shuffle(QUESTION_POOL).slice(0, 4);
+  answers = new Array(4).fill('');
+  currentIdx = 0;
+  interviewStarted = true;
+
+  // UI 전환
+  document.getElementById('start-screen').style.display = 'none';
+  const content = document.getElementById('interview-content');
+  content.style.display = 'flex';
+  document.getElementById('answer-area').style.display = 'flex';
+
+  // 질문 뱅크 표시
+  highlightQBank();
+  
+  
+
+  // 진행 표시줄 생성
+  buildProgressSteps();
+
+  // 첫 질문 표시
+  showQuestion(0);
+
+  showToast('🎲 질문 4개가 랜덤으로 선택되었습니다!');
+}
+
+// ── 질문뱅크 하이라이트
+function highlightQBank() {
+  QUESTION_POOL.forEach((q, i) => {
+    const el = document.getElementById('qbank-' + i);
+    el.classList.remove('selected-q', 'answered', 'current');
+  });
+  selectedQuestions.forEach((q, si) => {
+    const poolIdx = QUESTION_POOL.findIndex(p => p.id === q.id);
+    const el = document.getElementById('qbank-' + poolIdx);
+    el.classList.add('selected-q');
+    if (si < currentIdx) el.classList.add('answered');
+    if (si === currentIdx) el.classList.add('current');
+  });
+}
+
+// ── 진행 표시줄 생성
+function buildProgressSteps() {
+  const wrap = document.getElementById('progress-steps');
+  wrap.innerHTML = '';
+  selectedQuestions.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'progress-dot' + (i === 0 ? ' active' : '');
+    dot.id = 'pdot-' + i;
+    dot.textContent = i + 1;
+    wrap.appendChild(dot);
+  });
+  document.getElementById('progress-label').textContent = '0 / 4';
+  document.getElementById('progress-fill').style.width = '0%';
+}
+
+// ── 질문 표시
+function showQuestion(idx) {
+  currentIdx = idx;
+  const q = selectedQuestions[idx];
+
+  document.getElementById('q-num').textContent = `Q${idx + 1} / 4`;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('q-category').textContent = q.category;
+  document.getElementById('q-hint').textContent = q.hint;
+
+  const badge = document.getElementById('q-agent-badge');
+  badge.textContent = `${q.agent.icon} ${q.agent.label}`;
+  badge.style.background = q.agent.color;
+  badge.style.border = `1px solid ${q.agent.borderColor}`;
+  badge.style.color = q.agent.textColor;
+
+  // 진행 업데이트
+  document.querySelectorAll('.progress-dot').forEach((d, i) => {
+    d.classList.remove('active', 'done');
+    if (i < idx) d.classList.add('done');
+    if (i === idx) d.classList.add('active');
+  });
+  document.getElementById('progress-label').textContent = `${idx} / 4`;
+  document.getElementById('progress-fill').style.width = `${(idx / 4) * 100}%`;
+  
+
+  // 질문뱅크 업데이트
+  highlightQBank();
+
+  // 현재 질문 풀 아이템으로 스크롤
+  const curQ = selectedQuestions[idx];
+  const poolIdx = QUESTION_POOL.findIndex(p => p.id === curQ.id);
+  const curEl = document.getElementById('qbank-' + poolIdx);
+  if (curEl) curEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // 답변창 초기화
+  document.getElementById('answer-input').value = '';
+  document.getElementById('answer-input').focus();
+
+  // 타이머 리셋
+  resetTimer();
+
+  // 에이전트 업데이트
+  updateAgentOnQuestion(idx);
+
+  // 완료 화면 숨기기
+  document.getElementById('complete-screen').style.display = 'none';
+  document.getElementById('current-q-card').style.display = 'block';
+  document.getElementById('answer-area').style.display = 'flex';
+
+  // 스크롤 위로
+  document.getElementById('iv-top').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── 타이머
+function resetTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerSecs = 150;
+  const el = document.getElementById('timer');
+  el.textContent = '02:30';
+  el.classList.remove('urgent');
+  timerInterval = setInterval(() => {
+    timerSecs--;
+    const m = String(Math.floor(timerSecs / 60)).padStart(2, '0');
+    const s = String(timerSecs % 60).padStart(2, '0');
+    el.textContent = m + ':' + s;
+    if (timerSecs <= 30) el.classList.add('urgent');
+    if (timerSecs <= 0) {
+      clearInterval(timerInterval);
+      showToast('⏰ 시간이 종료되었습니다.');
+    }
+  }, 1000);
+}
+
+// ── 답변 제출
+function submitAnswer() {
+  const val = document.getElementById('answer-input').value.trim();
+  if (!val) {
+    showToast('💬 답변을 입력해주세요.');
+    return;
+  }
+
+  answers[currentIdx] = val;
+  if (timerInterval) clearInterval(timerInterval);
+
+  showToast('✅ 답변이 제출되었습니다!');
+
+  // 에이전트 분석 시뮬레이션
+  simulateAgentAnalysis(currentIdx);
+
+  // 이전 답변 로그에 추가
+  addPrevAnswer(currentIdx, val);
+
+  // 다음 질문 or 완료
+  setTimeout(() => {
+    const next = currentIdx + 1;
+    if (next < 4) {
+      showQuestion(next);
+    } else {
+      showComplete();
+    }
+  }, 800);
+}
+
+// ── 건너뛰기
+function skipQuestion() {
+  answers[currentIdx] = '';
+  if (timerInterval) clearInterval(timerInterval);
+  showToast('⏭ 질문을 건너뛰었습니다.');
+  addPrevAnswer(currentIdx, null);
+  const next = currentIdx + 1;
+  if (next < 4) {
+    setTimeout(() => showQuestion(next), 300);
+  } else {
+    setTimeout(() => showComplete(), 300);
+  }
+}
+
+// ── 이전 답변 로그 추가
+function addPrevAnswer(idx, ansText) {
+  const container = document.getElementById('prev-answers');
+  const q = selectedQuestions[idx];
+
+  if (idx === 0 && container.innerHTML === '') {
+    const titleEl = document.createElement('div');
+    titleEl.className = 'prev-log-title';
+    titleEl.textContent = '이전 답변';
+    container.appendChild(titleEl);
+  }
+
+  const div = document.createElement('div');
+  div.className = 'prev-qa';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <span style="font-size:11px;padding:3px 8px;border-radius:10px;background:${q.agent.color};border:1px solid ${q.agent.borderColor};color:${q.agent.textColor}">${q.agent.icon} ${q.agent.label}</span>
+      <span style="font-size:11px;color:var(--text-muted);">Q${idx + 1}</span>
+    </div>
+    <div class="prev-q-text">${q.text}</div>
+    <div class="${ansText ? 'prev-a-text' : 'qa-empty'}">${ansText || '(건너뜀)'}</div>
+  `;
+  container.appendChild(div);
+}
+
+// ── 완료 화면
+function showComplete() {
+  if (timerInterval) clearInterval(timerInterval);
+  document.getElementById('current-q-card').style.display = 'none';
+  document.getElementById('answer-area').style.display = 'none';
+  document.getElementById('complete-screen').style.display = 'flex';
+
+  // 진행 업데이트 (전부 완료)
+  document.querySelectorAll('.progress-dot').forEach(d => {
+    d.classList.remove('active');
+    d.classList.add('done');
+  });
+  document.getElementById('progress-label').textContent = '4 / 4';
+  document.getElementById('progress-fill').style.width = '100%';
+
+  // 질문뱅크 전부 answered
+  selectedQuestions.forEach(q => {
+    const poolIdx = QUESTION_POOL.findIndex(p => p.id === q.id);
+    const el = document.getElementById('qbank-' + poolIdx);
+    el.classList.remove('current');
+    el.classList.add('answered');
+  });
+  
+  
+
+  showToast('🎉 모든 질문에 답변하셨습니다!');
+}
+
+// ── 결과 페이지로
+function goToResult() {
+  goPage('result');
+  buildResult();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 에이전트 시뮬레이션 + 토론 피드
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const AGENTS = [
+  { id: 'ag1', dab: 'dab1', icon: '🔍', name: '검증 면접관', color: 'rgba(200,169,110,0.15)', scoreColor: 'var(--green)', textColor: '#c8a96e' },
+  { id: 'ag2', dab: 'dab2', icon: '💢', name: '압박 면접관', color: 'rgba(248,113,113,0.15)', scoreColor: 'var(--red)', textColor: '#f87171' },
+  { id: 'ag3', dab: 'dab3', icon: '💼', name: '실무 면접관', color: 'rgba(126,184,247,0.15)', scoreColor: 'var(--accent2)', textColor: '#7eb8f7' },
+  { id: 'ag4', dab: 'dab4', icon: '🌱', name: '성장 면접관', color: 'rgba(74,222,128,0.15)',  scoreColor: 'var(--accent3)', textColor: '#4ade80' },
+  { id: 'ag5', dab: 'dab5', icon: '🤝', name: '조직적합 면접관', color: 'rgba(167,139,250,0.15)', scoreColor: 'var(--accent3)', textColor: '#a78bfa' }
+];
+
+// 질문 유형별 토론 시나리오
+const DEBATE_SCRIPTS = [
+  // Q1 시나리오
+  [
+    { agent: 0, side: 'left',  delay: 400,  text: '자기소개 답변을 분석했습니다. 경험 기반으로 서술한 점은 긍정적이나, <strong>본인의 기여도가 구체적으로 드러나지 않는 부분</strong>이 있어 추가 검증이 필요합니다.', tag: { text: '진정성 검토', color: 'rgba(200,169,110,0.2)', textColor: '#c8a96e' } },
+    { agent: 2, side: 'right', delay: 1400, text: '직무 연결성 측면에서는 양호합니다. 다만 지원 직무에서 실제로 요구되는 역량과 서술된 경험의 <strong>매핑이 다소 느슨</strong>합니다.', tag: { text: '직무 적합성', color: 'rgba(126,184,247,0.2)', textColor: '#7eb8f7' } },
+    { type: 'typing', agent: 1, delay: 2400 },
+    { agent: 1, side: 'left',  delay: 3200, text: '구체성을 검증해보겠습니다. "팀을 이끌었다"는 표현이 있는데, <strong>팀 규모는 몇 명이었고 본인이 직접 수행한 결과물은 무엇</strong>인지 꼬리 질문이 필요합니다.', tag: { text: '구체성 부족', color: 'rgba(248,113,113,0.2)', textColor: '#f87171' } },
+    { agent: 3, side: 'right', delay: 4200, text: '성장 관점에서 보면, 경험에서 배운 점을 언급한 부분이 인상적입니다. <strong>자기 인식이 명확한 지원자</strong>일 가능성이 높습니다.', tag: { text: '성장 가능성 ↑', color: 'rgba(74,222,128,0.2)', textColor: '#4ade80' } },
+    { type: 'verdict', delay: 5400, text: '자기소개 답변은 기본 구조는 갖추고 있으나 수치 및 구체적 기여도 서술이 보완되어야 합니다. 진정성과 성장 가능성은 긍정적으로 평가됩니다.', scores: [{ icon: '🔍', label: '진정성', val: 68, color: '#c8a96e' }, { icon: '💼', label: '직무연결', val: 61, color: '#7eb8f7' }, { icon: '🌱', label: '성장성', val: 74, color: '#4ade80' }] }
+  ],
+  // Q2 시나리오
+  [
+    { agent: 1, side: 'left',  delay: 400,  text: '답변의 논리 구조를 분석합니다. 주장은 있으나 <strong>뒷받침하는 근거가 충분하지 않습니다.</strong> 특히 "왜 그 방법을 선택했는가"에 대한 설명이 빠져 있습니다.', tag: { text: '논리 보완 필요', color: 'rgba(248,113,113,0.2)', textColor: '#f87171' } },
+    { agent: 2, side: 'right', delay: 1600, text: '실무 관점에서 보면, 문제 상황 인식은 적절합니다. 하지만 <strong>해결 과정에서의 우선순위 판단</strong>이 명시되지 않아 실무 역량을 판단하기 어렵습니다.', tag: { text: '과정 서술 필요', color: 'rgba(126,184,247,0.2)', textColor: '#7eb8f7' } },
+    { type: 'typing', agent: 4, delay: 2600 },
+    { agent: 4, side: 'right', delay: 3500, text: '협업 측면에서는 긍정적 신호가 있습니다. 팀원들과의 조율 과정을 언급한 점에서 <strong>협업 지향적 성향</strong>이 확인됩니다.', tag: { text: '협업 신호 ✓', color: 'rgba(167,139,250,0.2)', textColor: '#a78bfa' } },
+    { agent: 1, side: 'left',  delay: 4600, text: '압박 관점 추가: 결과에 대해 "잘 마무리되었다"고만 서술했는데, <strong>구체적인 성과 지표</strong>(수치, 기간, 비교값)가 없으면 신뢰도가 낮습니다.', tag: { text: '수치 근거 없음', color: 'rgba(248,113,113,0.2)', textColor: '#f87171' } },
+    { agent: 3, side: 'right', delay: 5600, text: '성장 관점으로 동의합니다. 다만 답변에서 <strong>실패나 시행착오 후 개선한 과정</strong>이 있었다면 오히려 더 설득력이 있었을 것입니다.', tag: { text: '성찰 표현 권장', color: 'rgba(74,222,128,0.2)', textColor: '#4ade80' } },
+    { type: 'verdict', delay: 6800, text: '전반적으로 경험은 보유하고 있으나 구체적 수치와 논리적 근거 제시가 부족합니다. 다음 질문에서 Before/After 지표를 포함해 답변하면 훨씬 강력한 인상을 줄 수 있습니다.', scores: [{ icon: '💢', label: '논리성', val: 52, color: '#f87171' }, { icon: '💼', label: '실전감각', val: 64, color: '#7eb8f7' }, { icon: '🤝', label: '협업력', val: 71, color: '#a78bfa' }] }
+  ],
+  // Q3 시나리오
+  [
+    { agent: 2, side: 'left',  delay: 400,  text: '직무 경험 답변에서 <strong>기술 스택 활용 맥락</strong>이 명확하게 서술되었습니다. 실무에서 어떤 문제를 해결했는지 흐름이 파악됩니다.', tag: { text: '직무 적합 양호', color: 'rgba(126,184,247,0.2)', textColor: '#7eb8f7' } },
+    { agent: 0, side: 'right', delay: 1500, text: '이력서와 답변을 대조했을 때 일관성은 확인됩니다. 다만 <strong>해당 프로젝트에서 본인이 독자적으로 판단한 부분</strong>이 어디까지인지 더 확인이 필요합니다.', tag: { text: '기여도 검증 중', color: 'rgba(200,169,110,0.2)', textColor: '#c8a96e' } },
+    { type: 'typing', agent: 1, delay: 2500 },
+    { agent: 1, side: 'left',  delay: 3300, text: '압박 포인트: "팀원들과 함께 개발했다"는 표현이 반복됩니다. 면접관 입장에서는 <strong>이 지원자가 실제로 무엇을 혼자 완성시킬 수 있는가</strong>가 의문입니다.', tag: { text: '독립 수행력 의문', color: 'rgba(248,113,113,0.2)', textColor: '#f87171' } },
+    { agent: 3, side: 'right', delay: 4400, text: '성장 관점에서 보면, 이 프로젝트에서 <strong>기술적 한계에 부딪힌 경험과 그 극복 방법</strong>을 서술했다면 더 인상적인 답변이 되었을 것입니다.', tag: { text: '극복 스토리 권장', color: 'rgba(74,222,128,0.2)', textColor: '#4ade80' } },
+    { agent: 4, side: 'left',  delay: 5400, text: '조직적합 관점에서는 팀 내 역할 분담과 의사소통 방식이 어느 정도 드러납니다. <strong>갈등 상황을 어떻게 해결했는지</strong>도 확인하면 좋겠습니다.', tag: { text: '팀 역동성 확인 필요', color: 'rgba(167,139,250,0.2)', textColor: '#a78bfa' } },
+    { type: 'verdict', delay: 6500, text: '직무 연관 경험은 충분히 보유하고 있습니다. 개인 기여도와 독립적 문제 해결 능력을 더 구체적으로 드러내는 것이 핵심 과제입니다.', scores: [{ icon: '🔍', label: '일관성', val: 76, color: '#c8a96e' }, { icon: '💢', label: '독립성', val: 48, color: '#f87171' }, { icon: '💼', label: '기술력', val: 73, color: '#7eb8f7' }] }
+  ],
+  // Q4 시나리오
+  [
+    { agent: 4, side: 'left',  delay: 400,  text: '조직 적합성을 종합 평가합니다. 전체 답변을 통해 <strong>협업 지향적이며 갈등 상황에서도 냉정함을 유지하는 성향</strong>이 확인됩니다.', tag: { text: '조직 적합 ✓', color: 'rgba(167,139,250,0.2)', textColor: '#a78bfa' } },
+    { agent: 3, side: 'right', delay: 1400, text: '4개 질문을 모두 답변했습니다. 성장 관점에서 <strong>자기 인식이 명확하고 학습 의지가 높은 지원자</strong>로 평가됩니다. 피드백 수용력도 긍정적입니다.', tag: { text: '성장성 높음 ↑', color: 'rgba(74,222,128,0.2)', textColor: '#4ade80' } },
+    { type: 'typing', agent: 1, delay: 2200 },
+    { agent: 1, side: 'left',  delay: 3000, text: '최종 압박 검토: 전체 답변 중 <strong>수치 기반 근거가 포함된 답변이 아직 부족</strong>합니다. 실제 면접에서는 이 부분이 합격/불합격을 가르는 핵심 요인이 됩니다.', tag: { text: '수치 보완 필수', color: 'rgba(248,113,113,0.2)', textColor: '#f87171' } },
+    { agent: 0, side: 'right', delay: 4000, text: '이력서와 전체 답변의 일관성은 검증되었습니다. <strong>허위 정보나 과장된 서술은 발견되지 않았으며</strong>, 신뢰성 측면에서 통과입니다.', tag: { text: '신뢰성 검증 완료', color: 'rgba(200,169,110,0.2)', textColor: '#c8a96e' } },
+    { agent: 2, side: 'left',  delay: 5100, text: '실무 종합 평가: 직무 지식은 충분하나 <strong>실제 현업 상황에서의 우선순위 판단력</strong>을 더 연습해야 합니다. 전반적으로 잠재력은 확인됩니다.', tag: { text: '실무 잠재력 확인', color: 'rgba(126,184,247,0.2)', textColor: '#7eb8f7' } },
+    { type: 'verdict', delay: 6300, text: '🏁 최종 종합 판정: 기본 역량과 성장 가능성은 검증되었습니다. 수치 기반 답변과 개인 기여도 서술을 강화하면 합격 가능성이 크게 높아집니다. 면접 준비 방향은 결과 페이지를 확인하세요.', scores: [{ icon: '🔍', label: '종합 신뢰', val: 72, color: '#c8a96e' }, { icon: '💢', label: '논리 점수', val: 58, color: '#f87171' }, { icon: '🌱', label: '성장성', val: 81, color: '#4ade80' }] }
+  ]
+];
+
+let currentTab = 'all';
+let debateMessages = []; // 탭 필터용
+
+function switchTab(btn, tab) {
+  currentTab = tab;
+  document.querySelectorAll('.debate-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDebateFeed();
+}
+
+function renderDebateFeed() {
+  const feed = document.getElementById('debate-feed');
+  const msgs = currentTab === 'critical'
+    ? debateMessages.filter(m => m.type === 'verdict' || m.isCritical)
+    : debateMessages;
+
+  feed.innerHTML = '';
+  if (msgs.length === 0) {
+    feed.innerHTML = `<div class="debate-empty"><div class="debate-empty-icon">💭</div><div class="debate-empty-text">답변을 제출하면<br>AI 면접관 5명이 실시간으로<br>의견을 교환합니다</div></div>`;
+    return;
+  }
+  msgs.forEach(m => feed.appendChild(createMsgEl(m)));
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function createMsgEl(m) {
+  if (m.type === 'divider') {
+    const div = document.createElement('div');
+    div.className = 'debate-section-divider';
+    div.innerHTML = `<div class="debate-section-label">📋 ${m.label} 토론</div>`;
+    return div;
+  }
+  if (m.type === 'verdict') {
+    const div = document.createElement('div');
+    div.className = 'debate-verdict';
+    const isFinal = m.text.startsWith('🏁');
+    div.innerHTML = `
+      <div class="debate-verdict-header">
+        <div class="debate-verdict-icon">${isFinal ? '🏁' : '⚖️'}</div>
+        <div>
+          <div class="debate-verdict-label">${isFinal ? '최종 종합 판정' : '에이전트 합의 도달'}</div>
+          <div class="debate-verdict-sub">${isFinal ? '전체 면접 분석 완료' : '이번 질문 분석 완료'}</div>
+        </div>
+      </div>
+      <div class="debate-verdict-body">
+        <div class="debate-verdict-text">${m.text.replace(/^🏁\s*/, '')}</div>
+        <div class="debate-verdict-scores">
+          ${m.scores.map(s => `
+            <div class="verdict-score-chip">
+              <span class="verdict-score-icon">${s.icon}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                  <span class="verdict-score-label">${s.label}</span>
+                  <span class="verdict-score-num" style="color:${s.color}">${s.val}</span>
+                </div>
+                <div class="verdict-score-bar"><div class="verdict-score-bar-fill" style="width:0%;background:${s.color}" data-target="${s.val}"></div></div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>
+    `;
+    setTimeout(() => {
+      div.querySelectorAll('.verdict-score-bar-fill').forEach(el => {
+        el.style.width = el.dataset.target + '%';
+      });
+    }, 200);
+    return div;
+  }
+  // 일반 메시지
+  const ag = AGENTS[m.agentIdx];
+  const isRight = m.side === 'right';
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const div = document.createElement('div');
+  div.className = `debate-msg ${isRight ? 'right' : ''}`;
+  div.innerHTML = `
+    <div class="debate-avatar" style="background:${ag.color}">${ag.icon}</div>
+    <div class="debate-bubble-wrap">
+      <div class="debate-bubble-name" style="color:${ag.textColor}">${ag.name}</div>
+      <div class="debate-bubble">
+        <div class="debate-bubble-text">${m.text}</div>
+        ${m.tag ? `<div class="debate-bubble-footer"><div class="debate-bubble-tag" style="background:${m.tag.color};color:${m.tag.textColor}">${m.tag.text}</div><span class="debate-bubble-time">${timeStr}</span></div>` : `<div class="debate-bubble-footer" style="margin-top:6px;"><span class="debate-bubble-time">${timeStr}</span></div>`}
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+function addTypingIndicator(agentIdx) {
+  const ag = AGENTS[agentIdx];
+  const feed = document.getElementById('debate-feed');
+  const el = document.createElement('div');
+  el.className = 'debate-typing';
+  el.id = 'typing-indicator';
+  el.innerHTML = `
+    <div class="debate-avatar" style="background:${ag.color}">${ag.icon}</div>
+    <div class="typing-bubble">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  `;
+  feed.appendChild(el);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function updateAgentOnQuestion(qIdx) {
+  if (qIdx === 0) {
+    AGENTS.forEach((ag, i) => {
+      const statusEl = document.getElementById(ag.id + '-status');
+      const scoreEl = document.getElementById(ag.id + '-score');
+      const valEl = document.getElementById(ag.id + '-val');
+      if (statusEl) { statusEl.className = 'agent-mini-status status-wait'; statusEl.textContent = '대기'; }
+      if (scoreEl) scoreEl.style.width = '0%';
+      if (valEl) valEl.textContent = '—';
+    });
+  }
+}
+
+function simulateAgentAnalysis(qIdx) {
+  const script = DEBATE_SCRIPTS[qIdx] || DEBATE_SCRIPTS[0];
+  const feed = document.getElementById('debate-feed');
+
+  // 빈 상태 제거
+  const empty = document.getElementById('debate-empty');
+  if (empty) empty.remove();
+
+  // 라이브 도트 활성화
+  const dot = document.getElementById('debate-live-dot');
+  dot.classList.remove('off');
+  document.getElementById('debate-sub').textContent = `Q${qIdx + 1} 답변 분석 중...`;
+
+  // 모바일: 토론 탭 NEW 뱃지 표시
+  const badge = document.getElementById('mob-debate-badge');
+  if (badge) badge.style.display = 'inline';
+
+  // 섹션 구분자 추가
+  const dividerMsg = { type: 'divider', label: `Q${qIdx + 1} 분석` };
+  debateMessages.push(dividerMsg);
+  feed.appendChild(createMsgEl(dividerMsg));
+
+  // 에이전트 상태바 업데이트
+  AGENTS.forEach(ag => {
+    const dab = document.getElementById(ag.dab);
+    dab.classList.remove('done');
+    dab.classList.add('thinking');
+  });
+
+  let pendingTyping = false;
+
+  script.forEach((step, i) => {
+    if (step.type === 'typing') {
+      setTimeout(() => addTypingIndicator(step.agent), step.delay);
+      pendingTyping = true;
+      return;
+    }
+    if (step.type === 'verdict') {
+      setTimeout(() => {
+        removeTypingIndicator();
+        const msg = { type: 'verdict', text: step.text, scores: step.scores };
+        debateMessages.push(msg);
+        const el = createMsgEl(msg);
+        feed.appendChild(el);
+        feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+
+        // 에이전트 상태바 → 완료
+        AGENTS.forEach(ag => {
+          const dab = document.getElementById(ag.dab);
+          dab.classList.remove('thinking');
+          dab.classList.add('done');
+        });
+        document.getElementById('debate-sub').textContent = `Q${qIdx + 1} 분석 완료`;
+
+        // 미니 사이드바 점수 업데이트 (요소가 있을 때만)
+        step.scores.forEach(s => {
+          const agIdx = ['🔍','💢','💼','🌱','🤝'].indexOf(s.icon);
+          if (agIdx >= 0) {
+            const ag = AGENTS[agIdx];
+            const scoreEl = document.getElementById(ag.id + '-score');
+            const valEl = document.getElementById(ag.id + '-val');
+            const statusEl = document.getElementById(ag.id + '-status');
+            if (scoreEl) { scoreEl.style.width = s.val + '%'; scoreEl.style.background = s.color; }
+            if (valEl) valEl.textContent = s.val;
+            if (statusEl) { statusEl.className = 'agent-mini-status status-done'; statusEl.textContent = '완료'; }
+          }
+        });
+
+      }, step.delay);
+      return;
+    }
+
+    // 일반 메시지
+    setTimeout(() => {
+      removeTypingIndicator();
+      const msg = { type: 'msg', agentIdx: step.agent, side: step.side, text: step.text, tag: step.tag, isCritical: step.isCritical };
+      debateMessages.push(msg);
+      if (currentTab === 'all' || msg.isCritical) {
+        const el = createMsgEl(msg);
+        feed.appendChild(el);
+        feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+      }
+    }, step.delay);
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 결과 페이지 생성
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildResult() {
+  const answeredCount = answers.filter(a => a).length;
+  const baseScore = Math.floor((answeredCount / 4) * 60 + Math.random() * 25 + 10);
+  const score = Math.min(100, baseScore);
+
+  // 점수 링
+  document.getElementById('score-num').textContent = score;
+  const circumference = 339;
+  const offset = circumference - (score / 100) * circumference;
+  setTimeout(() => {
+    document.getElementById('score-ring').style.strokeDashoffset = offset;
+  }, 300);
+
+  // 등급
+  let grade, desc;
+  if (score >= 90) { grade = 'S 최우수'; desc = '전반적으로 매우 우수한 답변입니다.'; }
+  else if (score >= 80) { grade = 'A 우수'; desc = '구체적이고 논리적인 답변이 인상적입니다.'; }
+  else if (score >= 70) { grade = 'B+ 양호'; desc = '전반적으로 좋으나 일부 답변에서 구체성이 더 필요합니다.'; }
+  else if (score >= 60) { grade = 'B 보통'; desc = '기본적인 답변은 되어 있으나 경험 연결이 더 필요합니다.'; }
+  else { grade = 'C 개선 필요'; desc = '더 구체적이고 경험 기반의 답변을 준비해보세요.'; }
+
+  document.getElementById('result-grade').textContent = grade;
+  document.getElementById('result-desc').textContent = desc;
+
+  // 태그
+  const tags = document.getElementById('result-tags');
+  tags.innerHTML = '';
+  if (answeredCount >= 3) tags.innerHTML += '<span class="result-tag-good">✓ 성실한 참여</span>';
+  if (score >= 70) tags.innerHTML += '<span class="result-tag-good">✓ 논리적 답변</span>';
+  if (answeredCount < 4) tags.innerHTML += '<span class="result-tag-bad">✗ 미답변 항목 있음</span>';
+  if (score < 70) tags.innerHTML += '<span class="result-tag-bad">✗ 구체성 보완 필요</span>';
+
+  // Q&A 리뷰
+  const qaReview = document.getElementById('qa-review');
+  qaReview.innerHTML = '';
+  selectedQuestions.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'qa-review-item';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:11px;padding:3px 8px;border-radius:10px;background:${q.agent.color};border:1px solid ${q.agent.borderColor};color:${q.agent.textColor}">${q.agent.icon} ${q.agent.label}</span>
+        <span style="font-size:11px;color:var(--text-muted);">Q${i+1}</span>
+        <span style="font-size:11px;color:var(--text-muted);">${q.category}</span>
+      </div>
+      <div class="qa-q">${q.text}</div>
+      <div class="${answers[i] ? 'qa-a' : 'qa-empty'}">${answers[i] || '(미답변)'}</div>
+    `;
+    qaReview.appendChild(div);
+  });
+
+  // 항목별 평가
+  const metrics = [
+    { name: '논리성 / 설득력', val: Math.max(30, score - 15 + Math.floor(Math.random()*20)), color: 'linear-gradient(90deg,#f87171,#fbbf24)' },
+    { name: '직무 적합성', val: Math.max(40, score + Math.floor(Math.random()*15)), color: 'linear-gradient(90deg,var(--accent2),var(--accent3))' },
+    { name: '답변 구체성', val: Math.max(25, score - 20 + Math.floor(Math.random()*20)), color: 'linear-gradient(90deg,#f87171,#fbbf24)' },
+    { name: '성장 가능성', val: Math.min(100, score + 10 + Math.floor(Math.random()*10)), color: 'linear-gradient(90deg,var(--green),var(--accent2))' },
+    { name: '압박 대응 안정성', val: Math.max(35, score - 10 + Math.floor(Math.random()*15)), color: 'linear-gradient(90deg,#fbbf24,var(--accent))' },
+    { name: '협업 / 조직 적합성', val: Math.max(40, score + Math.floor(Math.random()*10)), color: 'linear-gradient(90deg,var(--accent),var(--accent2))' }
+  ].map(m => ({ ...m, val: Math.min(100, m.val) }));
+
+  const metricGrid = document.getElementById('metric-grid');
+  metricGrid.innerHTML = metrics.map(m => `
+    <div class="metric-item">
+      <div class="metric-name">${m.name}</div>
+      <div class="metric-bar-track"><div class="metric-bar-fill" style="width:0%;background:${m.color}" data-target="${m.val}"></div></div>
+      <div class="metric-val">${m.val} / 100</div>
+    </div>
+  `).join('');
+  setTimeout(() => {
+    document.querySelectorAll('.metric-bar-fill').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  }, 400);
+
+  // 피드백
+  const feedbacks = [
+    answeredCount >= 4
+      ? { good: true, icon: '✅', title: '성실한 답변 참여', desc: '4개 질문 모두에 답변하셨습니다. 면접에서 모든 질문에 성실히 답변하는 태도는 높이 평가됩니다.' }
+      : { good: false, icon: '⚠️', title: '미답변 항목 보완 필요', desc: '건너뛴 질문이 있습니다. 실제 면접에서는 모든 질문에 최선을 다해 답변하는 것이 중요합니다.' },
+    { good: score >= 70, icon: score >= 70 ? '✅' : '⚠️', title: score >= 70 ? '논리적 답변 구조' : '답변 구체성 보완 필요', desc: score >= 70 ? '전반적으로 답변의 흐름이 논리적입니다.' : '"~했습니다" 보다 "~를 통해 X라는 결과를 얻었습니다"처럼 구체적 경험과 결과를 함께 설명해보세요.' },
+    { good: false, icon: '⚠️', title: '수치 기반 근거 준비', desc: '성과를 설명할 때 구체적인 수치(%, 시간, 횟수 등)를 활용하면 면접관의 신뢰를 얻기 훨씬 쉽습니다.' },
+    { good: true, icon: '✅', title: 'STAR 구조 연습 권장', desc: '상황(Situation) → 과제(Task) → 행동(Action) → 결과(Result) 구조로 경험을 정리해두면 어떤 질문에도 자신있게 답할 수 있습니다.' }
+  ];
+
+  const feedbackList = document.getElementById('feedback-list');
+  feedbackList.innerHTML = feedbacks.map(f => `
+    <div class="feedback-item ${f.good ? 'good' : 'bad'}">
+      <div class="feedback-icon">${f.icon}</div>
+      <div class="feedback-body">
+        <div class="feedback-title">${f.title}</div>
+        <div class="feedback-desc">${f.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── 리셋
+function resetInterview() {
+  selectedQuestions = [];
+  answers = [];
+  currentIdx = 0;
+  interviewStarted = false;
+  debateMessages = [];
+  if (timerInterval) clearInterval(timerInterval);
+
+  // UI 초기화
+  document.getElementById('start-screen').style.display = 'flex';
+  document.getElementById('interview-content').style.display = 'none';
+  document.getElementById('answer-area').style.display = 'none';
+  document.getElementById('prev-answers').innerHTML = '';
+  document.getElementById('complete-screen').style.display = 'none';
+  document.getElementById('current-q-card').style.display = 'block';
+
+  // 토론 피드 초기화
+  document.getElementById('debate-feed').innerHTML = `
+    <div class="debate-empty" id="debate-empty">
+      <div class="debate-empty-icon">💭</div>
+      <div class="debate-empty-text">답변을 제출하면<br>AI 면접관 5명이 실시간으로<br>의견을 교환합니다</div>
+    </div>`;
+  document.getElementById('debate-sub').textContent = '면접 시작 후 활성화됩니다';
+  const dot = document.getElementById('debate-live-dot');
+  dot.classList.add('off');
+
+  // 에이전트 상태바 초기화
+  AGENTS.forEach(ag => {
+    const dab = document.getElementById(ag.dab);
+    if (dab) dab.classList.remove('thinking', 'done');
+    const statusEl = document.getElementById(ag.id + '-status');
+    const scoreEl = document.getElementById(ag.id + '-score');
+    const valEl = document.getElementById(ag.id + '-val');
+    if (statusEl) { statusEl.className = 'agent-mini-status status-wait'; statusEl.textContent = '대기'; }
+    if (scoreEl) scoreEl.style.width = '0%';
+    if (valEl) valEl.textContent = '—';
+  });
+
+  initQBank();
+  goPage('interview');
+}
+
+// ── 에이전트 선택
+function selectAgent(card) {
+  document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+}
+
+// ── 초기화
+setTimeout(() => document.getElementById('splash').classList.add('hide'), 2000);
+initQBank();
+</script>
+</body>
+</html>
